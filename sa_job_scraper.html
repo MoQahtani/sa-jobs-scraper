@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SA Jobs Scraper</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d0f14;
+    --surface: #161a22;
+    --surface2: #1e2330;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e8eaf0;
+    --text2: #8b91a0;
+    --accent: #00d4aa;
+    --accent2: #0097ff;
+    --danger: #ff5c5c;
+    --warn: #f5a623;
+    --mono: 'Courier New', monospace;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--surface);
+  }
+  .logo {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; color: #000;
+    flex-shrink: 0;
+  }
+  header h1 {
+    font-size: 17px; font-weight: 600; color: var(--text);
+    letter-spacing: -0.3px;
+  }
+  header span {
+    font-size: 12px; color: var(--text2);
+    background: var(--surface2);
+    padding: 2px 8px; border-radius: 4px;
+    border: 1px solid var(--border);
+    font-family: var(--mono);
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+  .config-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .config-full { grid-column: 1 / -1; }
+
+  .field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+    font-family: inherit;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--accent);
+  }
+  .field input::placeholder { color: var(--text2); }
+  .field select option { background: var(--surface); }
+  .field textarea { resize: vertical; min-height: 80px; font-family: var(--mono); font-size: 13px; }
+
+  .keywords-box {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 8px 10px;
+    min-height: 44px;
+    align-items: center;
+  }
+  .kw-tag {
+    background: rgba(0,212,170,0.12);
+    border: 1px solid rgba(0,212,170,0.3);
+    color: var(--accent);
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    display: flex; align-items: center; gap: 5px;
+    cursor: default;
+  }
+  .kw-tag button {
+    background: none; border: none;
+    color: var(--accent); cursor: pointer;
+    font-size: 14px; padding: 0; line-height: 1;
+    opacity: 0.7;
+  }
+  .kw-tag button:hover { opacity: 1; }
+  .kw-input {
+    background: none; border: none; outline: none;
+    color: var(--text); font-size: 13px;
+    flex: 1; min-width: 120px;
+    padding: 3px 0;
+    font-family: inherit;
+  }
+  .kw-input::placeholder { color: var(--text2); }
+
+  .actions {
+    display: flex; gap: 10px; margin-top: 1.25rem;
+  }
+  button.primary {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 22px;
+    font-size: 14px; font-weight: 600;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 7px;
+    transition: opacity 0.15s;
+  }
+  button.primary:hover { opacity: 0.88; }
+  button.primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  button.secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 14px; font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    display: flex; align-items: center; gap: 7px;
+  }
+  button.secondary:hover { border-color: var(--accent); color: var(--accent); }
+  button.secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .status-bar {
+    margin: 1.25rem 0;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .status-bar.info { background: rgba(0,151,255,0.1); border: 1px solid rgba(0,151,255,0.2); color: #5ab4ff; }
+  .status-bar.success { background: rgba(0,212,170,0.1); border: 1px solid rgba(0,212,170,0.2); color: var(--accent); }
+  .status-bar.error { background: rgba(255,92,92,0.1); border: 1px solid rgba(255,92,92,0.2); color: var(--danger); }
+  .status-bar.warn { background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.2); color: var(--warn); }
+
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .stats-row {
+    display: flex; gap: 10px; margin-bottom: 1rem;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    flex: 1;
+    text-align: center;
+  }
+  .stat .n { font-size: 22px; font-weight: 600; color: var(--accent); }
+  .stat .l { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 2px; }
+
+  .results-wrap { overflow-x: auto; }
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px;
+  }
+  th {
+    background: var(--surface);
+    color: var(--text2);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border2);
+    white-space: nowrap;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+  tr:hover td { background: var(--surface); }
+  td a {
+    color: var(--accent2);
+    text-decoration: none;
+  }
+  td a:hover { text-decoration: underline; }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .badge-kw {
+    background: rgba(0,212,170,0.12);
+    color: var(--accent);
+    border: 1px solid rgba(0,212,170,0.25);
+  }
+  .badge-via {
+    background: rgba(255,255,255,0.05);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+
+  .empty {
+    text-align: center; padding: 3rem 1rem; color: var(--text2);
+  }
+  .empty .icon { font-size: 36px; margin-bottom: 10px; }
+  .empty p { font-size: 14px; }
+
+  .setup-note {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--warn);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 1.5rem;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .setup-note strong { color: var(--warn); display: block; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; }
+  .setup-note a { color: var(--accent2); }
+  .setup-note code {
+    background: var(--surface2);
+    padding: 1px 6px; border-radius: 4px;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--accent);
+  }
+
+  .filter-row {
+    display: flex; gap: 10px; align-items: center; margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .filter-row input {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    padding: 7px 11px;
+    outline: none;
+    flex: 1; min-width: 200px;
+  }
+  .filter-row input:focus { border-color: var(--accent); }
+  .filter-row input::placeholder { color: var(--text2); }
+
+  section { margin-bottom: 1.5rem; }
+  section h2 {
+    font-size: 13px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.7px;
+    color: var(--text2); margin-bottom: 10px;
+  }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">SA</div>
+  <h1>Saudi Arabia Jobs Scraper</h1>
+  <span>Google Jobs · Last 24h</span>
+</header>
+
+<div class="container">
+
+  <div class="setup-note">
+    <strong>⚡ Setup Required</strong>
+    This tool uses <a href="https://serpapi.com" target="_blank">SerpAPI</a> to access Google Jobs data.
+    Get a free API key at <a href="https://serpapi.com/users/sign_up" target="_blank">serpapi.com</a> (100 searches/month free).
+    Paste your key below to get started.
+  </div>
+
+  <section>
+    <h2>Configuration</h2>
+    <div class="config-grid">
+      <div class="field">
+        <label>SerpAPI Key</label>
+        <input type="password" id="apiKey" placeholder="your_serpapi_key_here" />
+      </div>
+      <div class="field">
+        <label>Location</label>
+        <input type="text" id="location" value="Saudi Arabia" />
+      </div>
+      <div class="field config-full">
+        <label>Keywords to match (press Enter or comma to add)</label>
+        <div class="keywords-box" id="kwBox">
+          <input class="kw-input" id="kwInput" placeholder="Type keyword and press Enter..." />
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="searchBtn" onclick="runSearch()">
+        <span>Search Google Jobs</span>
+      </button>
+      <button class="secondary" id="exportBtn" onclick="exportCSV()" disabled>
+        ⬇ Export CSV
+      </button>
+      <button class="secondary" onclick="clearResults()">Clear</button>
+    </div>
+  </section>
+
+  <div id="statusBar" style="display:none"></div>
+
+  <hr class="divider" id="divider" style="display:none" />
+
+  <div id="resultsSection" style="display:none">
+    <div class="stats-row" id="statsRow"></div>
+    <div class="filter-row">
+      <input type="text" id="filterInput" placeholder="Filter results by title, company, or location..." oninput="applyFilter()" />
+    </div>
+    <div class="results-wrap">
+      <table id="resultsTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Job Title</th>
+            <th>Company</th>
+            <th>Location</th>
+            <th>Posted</th>
+            <th>Via</th>
+            <th>Matched Keyword</th>
+            <th>Link</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DEFAULT_KEYWORDS = ['Intern','Internship','Training','Engineer','Engineering','Scientist','Business Analyst','Analyst'];
+let allResults = [];
+let filteredResults = [];
+let keywords = [...DEFAULT_KEYWORDS];
+
+function renderKeywords() {
+  const box = document.getElementById('kwBox');
+  const input = document.getElementById('kwInput');
+  box.innerHTML = '';
+  keywords.forEach((kw, i) => {
+    const tag = document.createElement('span');
+    tag.className = 'kw-tag';
+    tag.innerHTML = `${kw}<button onclick="removeKw(${i})">×</button>`;
+    box.appendChild(tag);
+  });
+  box.appendChild(input);
+}
+
+function removeKw(i) {
+  keywords.splice(i, 1);
+  renderKeywords();
+}
+
+document.getElementById('kwInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = this.value.trim().replace(/,$/, '');
+    if (val && !keywords.includes(val)) {
+      keywords.push(val);
+      renderKeywords();
+    }
+    this.value = '';
+  }
+});
+
+renderKeywords();
+
+function matchedKeyword(title) {
+  const t = title.toLowerCase();
+  return keywords.find(kw => t.includes(kw.toLowerCase())) || null;
+}
+
+function setStatus(msg, type, spinner) {
+  const el = document.getElementById('statusBar');
+  el.style.display = 'flex';
+  el.className = `status-bar ${type}`;
+  el.innerHTML = spinner ? `<div class="spinner"></div><span>${msg}</span>` : `<span>${msg}</span>`;
+}
+
+async function runSearch() {
+  const key = document.getElementById('apiKey').value.trim();
+  const location = document.getElementById('location').value.trim() || 'Saudi Arabia';
+
+  if (!key) { setStatus('Please enter your SerpAPI key first.', 'error'); return; }
+  if (keywords.length === 0) { setStatus('Please add at least one keyword.', 'warn'); return; }
+
+  document.getElementById('searchBtn').disabled = true;
+  document.getElementById('exportBtn').disabled = true;
+  allResults = [];
+  filteredResults = [];
+
+  setStatus(`Searching Google Jobs for ${keywords.length} keyword groups in ${location}...`, 'info', true);
+
+  const queries = buildQueries(keywords);
+  let fetched = 0;
+  const seen = new Set();
+
+  for (const q of queries) {
+    setStatus(`Querying: "${q}" (${++fetched}/${queries.length})...`, 'info', true);
+    try {
+      const url = `https://serpapi.com/search.json?engine=google_jobs&q=${encodeURIComponent(q)}&location=${encodeURIComponent(location)}&chips=date_posted%3Atoday&api_key=${key}&hl=en`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+
+      if (data.error) {
+        setStatus(`SerpAPI error: ${data.error}`, 'error');
+        document.getElementById('searchBtn').disabled = false;
+        return;
+      }
+
+      const jobs = data.jobs_results || [];
+      for (const job of jobs) {
+        const id = `${job.title}__${job.company_name}`;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        const kw = matchedKeyword(job.title);
+        if (!kw) continue;
+        allResults.push({
+          title: job.title,
+          company: job.company_name || '',
+          location: (job.location || '').replace(/Saudi Arabia/gi, 'SA'),
+          posted: job.detected_extensions?.posted_at || 'Today',
+          via: job.via || '',
+          keyword: kw,
+          link: job.share_link || job.related_links?.[0]?.link || ''
+        });
+      }
+      await sleep(300);
+    } catch(err) {
+      console.warn('fetch error', err);
+    }
+  }
+
+  document.getElementById('searchBtn').disabled = false;
+
+  if (allResults.length === 0) {
+    setStatus('No matching jobs found in the last 24 hours. Try again later or adjust keywords.', 'warn');
+    return;
+  }
+
+  filteredResults = [...allResults];
+  setStatus(`Found ${allResults.length} matching jobs posted in the last 24 hours.`, 'success');
+  document.getElementById('exportBtn').disabled = false;
+  renderResults();
+}
+
+function buildQueries(kws) {
+  const groups = [
+    kws.filter(k => /intern|training/i.test(k)).join(' OR '),
+    kws.filter(k => /engineer/i.test(k)).join(' OR '),
+    kws.filter(k => /scientist/i.test(k)).join(' OR '),
+    kws.filter(k => /analyst/i.test(k)).join(' OR '),
+  ].filter(Boolean);
+
+  if (groups.length === 0) {
+    return [kws.slice(0, 4).join(' OR ')];
+  }
+  return groups.map(g => `jobs (${g})`);
+}
+
+function renderResults() {
+  const tbody = document.getElementById('resultsBody');
+  const section = document.getElementById('resultsSection');
+  const divider = document.getElementById('divider');
+  section.style.display = 'block';
+  divider.style.display = 'block';
+
+  const kwCount = {};
+  filteredResults.forEach(r => { kwCount[r.keyword] = (kwCount[r.keyword]||0)+1; });
+  const topKw = Object.entries(kwCount).sort((a,b)=>b[1]-a[1])[0]?.[0] || '-';
+
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat"><div class="n">${filteredResults.length}</div><div class="l">Jobs Found</div></div>
+    <div class="stat"><div class="n">${new Set(filteredResults.map(r=>r.company)).size}</div><div class="l">Companies</div></div>
+    <div class="stat"><div class="n">${new Set(filteredResults.map(r=>r.keyword)).size}</div><div class="l">Keyword Matches</div></div>
+    <div class="stat"><div class="n" style="font-size:14px">${topKw}</div><div class="l">Top Keyword</div></div>
+  `;
+
+  if (filteredResults.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="icon">🔍</div><p>No results match your filter.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filteredResults.map((r, i) => `
+    <tr>
+      <td style="color:var(--text2)">${i+1}</td>
+      <td style="font-weight:500;max-width:260px">${esc(r.title)}</td>
+      <td>${esc(r.company)}</td>
+      <td style="color:var(--text2)">${esc(r.location)}</td>
+      <td style="color:var(--text2);white-space:nowrap">${esc(r.posted)}</td>
+      <td><span class="badge badge-via">${esc(r.via)}</span></td>
+      <td><span class="badge badge-kw">${esc(r.keyword)}</span></td>
+      <td>${r.link ? `<a href="${esc(r.link)}" target="_blank">Open ↗</a>` : '<span style="color:var(--text2)">—</span>'}</td>
+    </tr>
+  `).join('');
+}
+
+function applyFilter() {
+  const q = document.getElementById('filterInput').value.toLowerCase();
+  filteredResults = allResults.filter(r =>
+    r.title.toLowerCase().includes(q) ||
+    r.company.toLowerCase().includes(q) ||
+    r.location.toLowerCase().includes(q)
+  );
+  renderResults();
+}
+
+function exportCSV() {
+  if (!filteredResults.length) return;
+  const headers = ['#','Title','Company','Location','Posted','Via','Keyword','Link'];
+  const rows = filteredResults.map((r,i) => [
+    i+1, csvCell(r.title), csvCell(r.company), csvCell(r.location),
+    csvCell(r.posted), csvCell(r.via), csvCell(r.keyword), csvCell(r.link)
+  ]);
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `SA_jobs_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+function clearResults() {
+  allResults = []; filteredResults = [];
+  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('divider').style.display = 'none';
+  document.getElementById('statusBar').style.display = 'none';
+  document.getElementById('exportBtn').disabled = true;
+  document.getElementById('filterInput').value = '';
+}
+
+function csvCell(v) {
+  v = String(v || '').replace(/"/g, '""');
+  return `"${v}"`;
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>
